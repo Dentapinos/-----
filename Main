@@ -1,0 +1,163 @@
+package wordsvirtuoso
+
+import java.io.File
+import kotlin.random.Random
+
+fun main(args: Array<String>) {
+    val start = System.currentTimeMillis()
+    if (args.size < 2 || args.size > 2) {
+        println("Error: Wrong number of arguments.")
+        return
+    }
+    val fileAllWords = File(args[0])
+    val fileCandidatesWords = File(args[1])
+    if (!fileAllWords.exists()) {
+        println("Error: The words file ${args[0]} doesn't exist.")
+        return
+    } else if (!fileCandidatesWords.exists()) {
+        println("Error: The candidate words file ${args[1]} doesn't exist.")
+        return
+    }
+
+    var countInvalideWordsAll = 0
+    var countInvalideWordsCan = 0
+    val lines = fileAllWords.readLines().map { it.lowercase() }
+    val lines2 = fileCandidatesWords.readLines().map { it.lowercase() }
+    for (l in lines) {
+        if (fileProv(l) > 0) {
+            countInvalideWordsAll++
+        }
+    }
+    for (c in lines2) {
+        if (fileProv(c) > 0) {
+            countInvalideWordsCan++
+        }
+    }
+    if (countInvalideWordsAll > 0) {
+        println("Error: $countInvalideWordsAll invalid words were found in the ${args[0]} file.")
+        return
+    }
+    if (countInvalideWordsCan > 0) {
+        println("Error: $countInvalideWordsCan invalid words were found in the ${args[1]} file.")
+        return
+    }
+    var count0 = 0
+    var count = 0
+
+    var est = 0
+    var net = 0
+    for (h in lines2) {
+        if (h in lines) est++ else net++
+    }
+    if (net > 0) {
+        println("Error: $net candidate words are not included in the ${args[0]} file.")
+        return
+    } else println("Words Virtuoso")
+
+    //Выбираем случайное слово в файле candidates.txt
+    val secretWord = lines2[Random.nextInt(0, lines2.size)]
+
+    val listIncorrectWord = emptyList<String>().toMutableList()
+    var incorrectChars = ""
+
+    while (true) {
+        println("\nInput a 5-letter word:")
+        val inputWord = readln().lowercase()
+        println("")
+        val end = System.currentTimeMillis()
+
+        when {
+            inputWord == "exit" -> {
+                println("\nThe game is over.")
+                return
+            }
+
+            inputWord == secretWord -> {
+                for (i in listIncorrectWord) {
+                    println(i)
+                }
+                for (i in 0 until 5) {
+                    print("\u001B[48:5:10m${inputWord[i].uppercase()}\u001B[0m")
+                }
+                println()
+                println("Correct!")
+                val duration = (end - start) / 1000
+                if (listIncorrectWord.size == 0) {
+                    println("Amazing luck! The solution was found at once.")
+                    return
+                }
+                println("The solution was found after ${listIncorrectWord.size + 1} tries in $duration seconds.")
+                return
+            }
+
+            inputWord.length != 5 -> {
+                println("The input isn't a 5-letter word.")
+                continue
+            }
+
+            fileProv(inputWord) == 1 -> {
+                println("One or more letters of the input aren't valid.")
+                continue
+            }
+
+            fileProv(inputWord) == 2 -> {
+                println("The input has duplicate letters.")
+                continue
+            }
+
+            inputWord !in lines -> {
+                println("The input word isn't included in my words list.")
+                continue
+            }
+
+            else -> {
+                val incorrectWord = hint(strInput = inputWord, strSecret = secretWord)
+                incorrectChars += incorrectChar(inputWord, secretWord, incorrectChars)
+                listIncorrectWord += incorrectWord
+                for (i in listIncorrectWord) {
+                    println(i)
+                }
+                val sortIncorectChar = incorrectChars.toMutableList().sorted().joinToString("").uppercase()
+                println("\n${"\u001B[48:5:14m$sortIncorectChar\u001B[0m"}")
+                continue
+            }
+        }
+    }
+}
+
+fun fileProv(line: String): Int {
+    val regex = Regex("""\s*""")
+    var inputLetter = line.replace(regex, "")
+
+    if (!inputLetter.matches(Regex("""[a-zA-Z]{5}"""))) return 1
+    var j = 0
+    for (i in inputLetter.indices) {
+        for (k in inputLetter) if (inputLetter[i] == k) j++
+        if (j >= 2) {
+            return 2
+        } else j = 0
+    }
+    return 0
+}
+
+fun hint(strInput: String, strSecret: String): String {
+    var theHint = ""
+    for (i in 0 until 5) {
+        theHint += if (strInput[i] == strSecret[i]) {
+            "\u001B[48:5:10m${strInput[i].uppercase()}\u001B[0m"
+        } else if (strInput[i] in strSecret) {
+            "\u001B[48:5:11m${strInput[i].uppercase()}\u001B[0m"
+        } else {
+            "\u001B[48:5:7m${strInput[i].uppercase()}\u001B[0m"
+        }
+    }
+    return theHint
+}
+
+fun incorrectChar(strInput: String, strSecret: String, strChar: String): String {
+    var theChar = ""
+    for (k in 0 until 5) {
+        theChar += if (strInput[k] !in strSecret && strInput[k] !in strChar) strInput[k] else ""
+    }
+    return theChar
+}
